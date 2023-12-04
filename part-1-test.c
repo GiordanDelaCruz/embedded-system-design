@@ -23,7 +23,7 @@ void P3 (void const *argument);
 int option = 0; 
 
 osTimerDef(timer0_handle, callback);
-osTimerDef(timer1_handle, callback);
+//osTimerDef(timer1_handle, callback);
 
 /*----------------------------------------------*/
 /*-- 		  Prepare to Create Threads						--*/
@@ -55,27 +55,44 @@ int Init_Thread (void) {
 
 
 void P1 (void const *argument) {
-	 //for(;;) {
-		
+	 for(;;) {
+			
 			// Dont do anything
 			osThreadYield();
 	
-			printf("[+]Option Value = %d\n", option);
-	
+			printf("DEBUG: Option Value = %d\n", option);
+		
 			// Determine which LEDS to flash
 			if( option == 2 ){
 				
-					printf("[+]Inside P1, option = 2\n");
+					printf("DEBUG: Inside P1, option = 2\n");
 					LED_On(0);
-					delay(200);
+					delay(20000);
 					LED_Off(0);
-	
+					
+					LED_On(1);
+					delay(20000);
+					LED_Off(1);
+				
+					LED_On(2);
+					delay(20000);
+					LED_Off(2);
+				
 			}else if ( option == 3){
 				
-					printf("[+]Inside P1, option = 3\n");
-					LED_On(1);
-					delay(200);															
-					LED_Off(1);
+					printf("DEBUG: Inside P1, option = 3\n");
+					LED_On(3);
+					delay(20000);															
+					LED_Off(3);
+				
+					LED_On(4);
+					delay(20000);
+					LED_Off(4);
+				
+					LED_On(5);
+					delay(20000);
+					LED_Off(5);
+				
 				
 			}
 			
@@ -83,53 +100,48 @@ void P1 (void const *argument) {
 			printf("DEBUG: P1 --> Calling Main\n");
 			osSignalSet(t_main,0x04);								// Call Main to finish the task
 			
-//			printf("DEBUG: P1 --> Blocked \n");
-//			osSignalWait(0x01,osWaitForever);			// Block P1
-			
-				// Terminate P1
-				printf("DEBUG: P1 --> Terminate \n");
-				osThreadTerminate( t_P1 );
-			
-  //}                                          
+  }                                          
 }
 
 void P2 (void const *argument) {
-	  //for(;;) {
+	  for(;;) {
 		
+			// Dont do anything
+			osThreadYield();
+	
 			// Set option to flash LEDs sequentially
 			option = 2;
+			printf("DEBUG: P2 --> Option = 2\n");
+	
+			printf("DEBUG: P2 --> Blocked \n");
+			osSignalWait(0x02,osWaitForever);			// Block P2
+			printf("[+]After signal P1\n");
 			
-			// Signal thread 1 to run
-			printf("DEBUG: P2 --> Calling P1\n");
-			osSignalSet(t_P1,0x01);								// Call P1 to finish the task
-	
-//			printf("DEBUG: P2 --> Blocked \n");
-//			osSignalWait(0x02,osWaitForever);			// Block P2
-//			printf("[+]After signal P1\n");
-	
-			// Terminate P2
-			printf("DEBUG: P2 --> Terminate \n");
-			osThreadTerminate( t_P2 );
+			// Signal Main to run
+			printf("DEBUG: P2 --> Signal Main \n");
+			osSignalSet(t_main,0x04);								// Call Main 
 
-  //}
+
+  }
 }
 
 // *** mycode ***
 void P3 (void const *argument) {
-	  //for(;;) {
+	  for(;;) {
 				
-				// Set option to flash LEDs evenly 
-				option = 3;
 				
-//				// Signal thread 1 to run
-//				osSignalSet(t_P1,0x01);								// Call P1 to finish the task
-//				osSignalWait(0x03,osWaitForever);			// Block P3
+			// Dont do anything
+			osThreadYield();
 	
-				// Terminate P3
-				printf("DEBUG: P3 --> Terminate \n");
-				osThreadTerminate( t_P3 );
+			// Set option to flash LEDs evenly 
+			option = 3;
+			printf("DEBUG: P3 --> Option = 3\n");
+	
+			// Signal Main to run
+			printf("DEBUG: P3 --> Signal Main \n");
+			osSignalSet(t_main,0x04);								// Call Main 
 
-  //}
+  }
 }
 
 
@@ -151,28 +163,29 @@ int main(void)
 	osTimerId timer_0 = osTimerCreate(osTimer(timer0_handle), osTimerPeriodic, (void *)0);	
 	osTimerStart(timer_0, 100);	
 	
-	osTimerId timer_1 = osTimerCreate(osTimer(timer0_handle), osTimerPeriodic, (void *)0);	
-	osTimerStart(timer_1, 200);	
+//	osTimerId timer_1 = osTimerCreate(osTimer(timer0_handle), osTimerPeriodic, (void *)0);	
+//	osTimerStart(timer_1, 200);	
 	
+	// Create Main thread
+	t_main = osThreadGetId ();
+	osThreadSetPriority(t_main,osPriorityHigh);
+			
+	
+	// Create Sub-Threads
+	t_P1 = osThreadCreate(osThread(P1), NULL);
+	t_P2 = osThreadCreate(osThread(P2), NULL);
+	t_P3 = osThreadCreate(osThread(P3), NULL);
+
+		
+	osKernelStart (); 
+			
 	// Get Joystick input
 	uint32_t joyStickValue =  Joystick_GetState();
 
 
 	while(1){
-			
-			// Create Main thread
-			t_main = osThreadGetId ();
-			osThreadSetPriority(t_main,osPriorityHigh);
-			
-			// Create Sub-Threads
-			t_P1 = osThreadCreate(osThread(P1), NULL);
-			t_P2 = osThreadCreate(osThread(P2), NULL);
-			t_P3 = osThreadCreate(osThread(P3), NULL);
-
-			osKernelStart (); 
 		
-		
-		
+			// Get Joystick input
 			joyStickValue =  Joystick_GetState();
 		
 		  	// Alternate between threads
@@ -181,14 +194,32 @@ int main(void)
 				// Signal thread 2 to run
 				osSignalSet(t_P2,0x02);								// Call P2 to finish the task
 				
+				// Block Main
+				osSignalWait(0x04,osWaitForever);			// Block Main
+				
 			}else if ( joyStickValue == JOYSTICK_DOWN ){
+				
+				// Increase Priority so thread 3 can run
+				//osThreadSetPriority(t_P3,osPriorityAboveNormal);
 				
 				// Signal thread 3 to run
 				osSignalSet(t_P3,0x03);								// Call P3 to finish the task
+				
+					// Block Main
+				osSignalWait(0x04,osWaitForever);			// Block Main
 			
 			}
 			
-			osSignalWait(0x04,osWaitForever);			// Block Main
+		
+			
+			if(option == 2 || option == 3){
+				
+				// Call P1
+				printf("Main --> Signal P1\n");
+				osSignalSet(t_P1,0x01);								// Call P1 to finish the task
+			}
+			
+			
 	}
 	
 }
