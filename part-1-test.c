@@ -12,10 +12,13 @@
  *      Declare Functions
  *---------------------------------------------------------------------------*/
 void delay(int milli_seconds );
+void ledPattern( int n );
 void callback(void const *param);
 void P1 (void const *argument); 
 void P2 (void const *argument);
 void P3 (void const *argument); 
+void P4 (void const *argument); 
+void P5 (void const *argument); 
 
  /*----------------------------------------------------------------------------
  *      Declare Variables
@@ -29,12 +32,14 @@ osTimerDef(timer0_handle, callback);
 /*-- 		  Prepare to Create Threads						--*/
 /*----------------------------------------------*/
 // Define Thread IDs
-osThreadId t_main, t_P1, t_P2, t_P3;
+osThreadId t_main, t_P1, t_P2, t_P3, t_P4, t_P5;
 
 // Set Thread Priority
 osThreadDef (P1, osPriorityNormal, 1, 0);                   
 osThreadDef (P2, osPriorityNormal, 1, 0);                   
-osThreadDef (P3, osPriorityNormal, 1, 0);          
+osThreadDef (P3, osPriorityNormal, 1, 0);    
+osThreadDef (P4, osPriorityNormal, 1, 0);  
+osThreadDef (P5, osPriorityNormal, 1, 0);  
 
 /*----------------------------------------------*/
 /*-- 		NOT IN USE: Initialize Threads				--*/    
@@ -45,6 +50,8 @@ int Init_Thread (void) {
   t_P1 = osThreadCreate (osThread(P1), NULL);
 	t_P2 = osThreadCreate (osThread(P2), NULL);
 	t_P3 = osThreadCreate (osThread(P3), NULL);
+	t_P4 = osThreadCreate (osThread(P4), NULL);
+	t_P5 = osThreadCreate (osThread(P5), NULL);
 	
 
 	// Check if thread is valid
@@ -64,41 +71,25 @@ void P1 (void const *argument) {
 		
 			// Determine which LEDS to flash
 			if( option == 2 ){
-				
 					printf("DEBUG: Inside P1, option = 2\n");
-					LED_On(0);
-					delay(20000);
-					LED_Off(0);
-					
-					LED_On(1);
-					delay(20000);
-					LED_Off(1);
-				
-					LED_On(2);
-					delay(20000);
-					LED_Off(2);
+					ledPattern(2);
 				
 			}else if ( option == 3){
-				
 					printf("DEBUG: Inside P1, option = 3\n");
-					LED_On(3);
-					delay(20000);															
-					LED_Off(3);
+					ledPattern(3);
 				
-					LED_On(4);
-					delay(20000);
-					LED_Off(4);
+			}else if( option == 4 ){
+					printf("DEBUG: Inside P1, option = 4\n");
+					ledPattern(4);
 				
-					LED_On(5);
-					delay(20000);
-					LED_Off(5);
-				
-				
+			}else if(  option == 5 ){
+					printf("DEBUG: Inside P1, option = 5\n");
+					ledPattern(5);
 			}
 			
 			// Signal Main thread to run again
 			printf("DEBUG: P1 --> Calling Main\n");
-			osSignalSet(t_main,0x04);								// Call Main to finish the task
+			osSignalSet(t_main,0x06);								// Call Main to finish the task
 			
   }                                          
 }
@@ -119,7 +110,7 @@ void P2 (void const *argument) {
 			
 			// Signal Main to run
 			printf("DEBUG: P2 --> Signal Main \n");
-			osSignalSet(t_main,0x04);								// Call Main 
+			osSignalSet(t_main,0x06);								// Call Main 
 
 
   }
@@ -139,7 +130,41 @@ void P3 (void const *argument) {
 	
 			// Signal Main to run
 			printf("DEBUG: P3 --> Signal Main \n");
-			osSignalSet(t_main,0x04);								// Call Main 
+			osSignalSet(t_main,0x06);								// Call Main 
+
+  }
+}
+
+void P4 (void const *argument) {
+	  for(;;) {
+						
+			// Dont do anything
+			osThreadYield();
+	
+			// Set option to flash LEDs evenly 
+			option = 4;
+			printf("DEBUG: P4 --> Option = 4\n");
+	
+			// Signal Main to run
+			printf("DEBUG: P4 --> Signal Main \n");
+			osSignalSet(t_main,0x06);								// Call Main 
+
+  }
+}
+
+void P5 (void const *argument) {
+	  for(;;) {
+				
+			// Dont do anything
+			osThreadYield();
+	
+			// Set option to flash LEDs evenly 
+			option = 5;
+			printf("DEBUG: P5 --> Option = 5\n");
+	
+			// Signal Main to run
+			printf("DEBUG: P5 --> Signal Main \n");
+			osSignalSet(t_main,0x06);								// Call Main 
 
   }
 }
@@ -175,6 +200,8 @@ int main(void)
 	t_P1 = osThreadCreate(osThread(P1), NULL);
 	t_P2 = osThreadCreate(osThread(P2), NULL);
 	t_P3 = osThreadCreate(osThread(P3), NULL);
+	t_P4 = osThreadCreate(osThread(P4), NULL);
+	t_P5 = osThreadCreate(osThread(P5), NULL);
 
 		
 	osKernelStart (); 
@@ -206,13 +233,27 @@ int main(void)
 				osSignalSet(t_P3,0x03);								// Call P3 to finish the task
 				
 					// Block Main
-				osSignalWait(0x04,osWaitForever);			// Block Main
+				osSignalWait(0x06,osWaitForever);			// Block Main
 			
+			}else if( joyStickValue == JOYSTICK_RIGHT ){
+				
+				// Signal thread 4 to run
+				osSignalSet(t_P4,0x04);								// Call P4 to finish the task
+				
+					// Block Main
+				osSignalWait(0x06,osWaitForever);			// Block Main
+				
+			}else if(  joyStickValue == JOYSTICK_LEFT){
+				// Signal thread 5 to run
+				osSignalSet(t_P5,0x05);								// Call P5 to finish the task
+				
+					// Block Main
+				osSignalWait(0x06,osWaitForever);			// Block Main
 			}
 			
 		
 			
-			if(option == 2 || option == 3){
+			if(option == 2 || option == 3 || option == 4 || option == 5){
 				
 				// Call P1
 				printf("Main --> Signal P1\n");
@@ -229,19 +270,122 @@ int main(void)
 void delay(int milli_seconds ){
 	int max;
 	
-	max = 1 * milli_seconds;
+	max = 4 * milli_seconds;
 	
 	for(int i = 0; i < max; i++){
 		// do nothing
 	}
 }
 
+/** LED Patterns
+ *  2 - Wave Pattern (GPIO 1)
+ *  3 - Symmertical Wave Pattern (GPIO 2)
+ *  4 - One by One Pattern (Both GPIO 1 & GPIO 2)
+ *  5 - Danger Pattern (GPIO 2)
+ * 
+*/
+void ledPattern( int n ){
+	
+	if( n == 2 ){
+		LED_On(0);
+		delay(20000);
+		LED_Off(0);
+		
+		LED_On(1);
+		delay(20000);
+		LED_Off(1);
+
+		LED_On(2);
+		delay(20000);
+		LED_Off(2);
+
+		LED_On(1);
+		delay(20000);
+		LED_Off(1);
+
+		LED_On(0);
+		delay(20000);
+		LED_Off(0);
+		
+	}else if( n == 3 ){
+		LED_On(3);
+		LED_On(7);
+		delay(20000);															
+		LED_Off(3);
+		LED_Off(7);
+	
+		LED_On(4);
+
+		LED_On(6);
+		delay(20000);
+		LED_Off(4);
+		LED_Off(6);
+
+	
+		LED_On(5);
+		delay(20000);
+		LED_Off(5);
+		
+		
+	}else if( n == 4 ){
+		LED_On(0);
+		delay(20000);	
+		LED_Off(0);
+		
+		LED_On(1);
+		delay(20000);	
+		LED_Off(1);
+		
+		LED_On(2);
+		delay(20000);	
+		LED_Off(2);
+		
+		LED_On(3);
+		delay(20000);	
+		LED_Off(3);
+		
+		LED_On(4);
+		delay(20000);	
+		LED_Off(4);
+		
+		LED_On(5);
+		delay(20000);	
+		LED_Off(5);
+		
+		LED_On(6);
+		delay(20000);	
+		LED_Off(6);
+			
+		LED_On(7);
+		delay(20000);															
+		LED_Off(7);
+
+	}else if( n == 5 ){
+		LED_On(0);
+		LED_On(1);
+		LED_On(2);
+		LED_On(3);
+		LED_On(4);
+		LED_On(5);
+		LED_On(6);
+		LED_On(7);
+		delay(20000);															
+		LED_Off(0);
+		LED_Off(1);
+		LED_Off(2);
+		LED_Off(3);
+		LED_Off(4);
+		LED_Off(5);
+		LED_Off(6);
+		LED_Off(7);
+	}
+}
 
 // Toggle the LED associated with the timer
 void callback(void const *param){
 	switch( (uint32_t) param){
 		case 0:		
-			osSignalSet	(t_main,0x04);									// Main thread
+			osSignalSet	(t_main,0x06);									// Main thread
 		
 			break;
 		
